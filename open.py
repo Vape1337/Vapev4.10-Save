@@ -8,7 +8,7 @@ def run_java_command():
     spoof = r'RunAsDate.exe 19\09\2015 13:37:37 Attach:cmd.exe & RunAsDate.exe 19\09\2015 13:37:37 Attach:cmdjavaw.exe'
     # 启动指令
     os.system('del.exe') #运行del.exe文件
-    command = ["./jdk-17/bin/java", "--add-opens", "java.base/java.lang=ALL-UNNAMED", "-jar", "vape-loader.jar"]
+    command = ["java", "--add-opens", "java.base/java.lang=ALL-UNNAMED", "-jar", "vape-loader.jar"]
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
     # 输出获取
