@@ -1,91 +1,93 @@
 import tkinter as tk
-from PIL import Image, ImageTk, ImageEnhance
+from tkinter import messagebox
+from PIL import Image, ImageTk, ImageEnhance, ImageDraw
+import webbrowser
 import os
-import subprocess
 import sys
+import subprocess
 
-# 判断当前运行的文件路径
+# 圆角窗口的设置
+def create_rounded_rectangle_image(width, height, radius, color):
+    image = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    draw.rounded_rectangle((0, 0, width, height), radius, fill=color)
+    return image
+
+# 获取脚本目录
 if getattr(sys, 'frozen', False):
     script_dir = sys._MEIPASS
 else:
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
 root = tk.Tk()
+
+# 窗口设置
 window_width = 694
 window_height = 417
-
 screen_width = root.winfo_screenwidth()
 screen_height = root.winfo_screenheight()
-
 x = (screen_width - window_width) // 2
 y = (screen_height - window_height) // 2
 
 root.geometry(f"{window_width}x{window_height}+{x}+{y}")
-root.configure(bg="#1a1a1a")
 root.overrideredirect(True)
 
+# 圆角窗口背景
+bg_image = create_rounded_rectangle_image(window_width, window_height, 20, "#1a1a1a")
+bg_photo = ImageTk.PhotoImage(bg_image)
+bg_label = tk.Label(root, image=bg_photo, bg="#1a1a1a")
+bg_label.place(x=0, y=0)
+
+# 设置任务栏图标显示
+root.iconbitmap(default=os.path.join(script_dir, "assets/icon.ico"))
+
+# 图片放置函数
 def place_image(path, x, y, anchor):
-    image = Image.open(os.path.join(script_dir, path))
+    image = Image.open(os.path.join(script_dir, path)).convert('RGBA')
     photo = ImageTk.PhotoImage(image)
     label = tk.Label(root, image=photo, bg="#1a1a1a")
     label.image = photo
     label.place(x=x, y=y, anchor=anchor)
     return label
 
+# 背景图片放置
 background_label = place_image("assets/mask_l_1.png", 0, 0, anchor="nw")
 place_image("assets/mask_r_1.png", window_width, window_height, anchor="se")
 
-# 缩小比例
-scale = 0.6
-
+# 按钮图像加载函数
 def load_image(path, scale):
-    image = Image.open(os.path.join(script_dir, path))
+    image = Image.open(os.path.join(script_dir, path)).convert('RGBA')
     width, height = image.size
     resized_image = image.resize((int(width * scale), int(height * scale)), Image.LANCZOS)
-    photo = ImageTk.PhotoImage(resized_image)
+    
     enhancer = ImageEnhance.Brightness(resized_image)
-    hover_image = enhancer.enhance(1.5)  # 提高伽马值
+    hover_image = enhancer.enhance(1.5)
+    
+    photo = ImageTk.PhotoImage(resized_image)
     hover_photo = ImageTk.PhotoImage(hover_image)
     return photo, hover_photo
 
+# 按钮点击状态变量
+clicked_any_button = False
+
+# 按钮点击事件
 def on_click(bat_path):
-    full_path = os.path.join(script_dir, bat_path)
-    print(f"Attempting to run: {full_path}")  # 打印尝试运行的路径
-    try:
-        subprocess.Popen(f'"{full_path}"', shell=True)
-        print(f"Successfully started: {full_path}")  # 打印成功启动信息
-    except Exception as e:
-        print(f"Failed to start {full_path}: {e}")  # 打印错误信息
-
-# 按钮路径与执行的程序映射
-buttons_info = [
-    ("assets/4.04.png", "VapeV4.04/run.bat"),
-    ("assets/4.09.png", "VapeV4.09/run.bat"),
-    ("assets/4.10.png", "VapeV4.10/run.bat"),
-    ("assets/4.11.png", "VapeV4.11/run.bat"),
-    ("assets/lite.png", "VapeLite/run.bat")
-]
-
-button_x_position = 20
-button_spacing = 60  # 调整间距
-
-# 最下方按钮的位置
-bottom_button_y_position = window_height - 100
-
-# 从下往上排列按钮
-for i, (img_path, bat_path) in enumerate(reversed(buttons_info)):
-    photo, hover_photo = load_image(img_path, scale)
-    button = tk.Button(root, image=photo, bg="#1a1a1a", bd=0, activebackground="#1a1a1a",
-                       command=lambda path=bat_path: on_click(path))
-    button.image = photo
-    button.bind("<Enter>", lambda event, hp=hover_photo: event.widget.config(image=hp))
-    button.bind("<Leave>", lambda event, p=photo: event.widget.config(image=p))
-    button.place(x=button_x_position, y=bottom_button_y_position - i * button_spacing, anchor="nw")
+    global clicked_any_button
+    if not clicked_any_button:
+        full_path = os.path.join(script_dir, bat_path)
+        
+        try:
+            subprocess.Popen(f'"{full_path}"', shell=True)
+            clicked_any_button = True  # 标记已有按钮被点击
+        except Exception as e:
+            print(f"Failed to start {full_path}: {e}")
+    else:
+        messagebox.showwarning("警告", "请不要多次点击！")
 
 # 关闭按钮设置
 close_button_path = "assets/off.png"
 off_image_path = os.path.join(script_dir, close_button_path)
-off_image = Image.open(off_image_path)
+off_image = Image.open(off_image_path).convert('RGBA')
 off_photo = ImageTk.PhotoImage(off_image)
 enhancer = ImageEnhance.Brightness(off_image)
 off_hover_image = enhancer.enhance(1.5)
@@ -105,7 +107,7 @@ button_y_offset = 20
 close_button.place(x=window_width - button_x_offset, y=button_y_offset, anchor="ne")
 close_button.lift()
 
-# 窗口拖动功能
+# 添加可拖动窗口功能
 def start_move(event):
     root._drag_data = {'x': event.x_root - root.winfo_rootx(), 'y': event.y_root - root.winfo_rooty()}
 
@@ -116,5 +118,88 @@ def do_move(event):
 
 root.bind('<ButtonPress-1>', start_move)
 root.bind('<B1-Motion>', do_move)
+
+# 创建按钮
+def create_button(button_image, bat_path, y_position):
+    button_photo, button_hover = load_image(button_image, 0.8)
+    button = tk.Button(root, image=button_photo, bg="#1a1a1a", bd=0, activebackground="#1a1a1a")
+    button.image = button_photo
+    button.place(x=50, y=y_position, anchor="nw")
+
+    # 将点击事件绑定到按钮上
+    button.config(command=lambda: on_click(bat_path))
+
+buttons_info = [
+    ("assets/4.04.png", "VapeV4.04/run.bat"),
+    ("assets/4.09.png", "VapeV4.09/run.bat"),
+    ("assets/4.10.png", "VapeV4.10/run.bat"),
+    ("assets/4.11.png", "VapeV4.11/run.bat"),
+    ("assets/lite.png", "VapeLite/run.bat")
+]
+
+button_y = 50
+for button_image, bat_path in buttons_info:
+    create_button(button_image, bat_path, button_y)
+    button_y += 60
+
+# 动画功能：显示logo1.png和logo.png在同一图层
+def animate_image():
+    logo1_image = Image.open(os.path.join(script_dir, "assets/logo1.png")).resize((111, 22), Image.LANCZOS).convert('RGBA')
+    logo1_photo = ImageTk.PhotoImage(logo1_image)
+    
+    logo_image = Image.open(os.path.join(script_dir, "assets/logo.png")).resize((111, 22), Image.LANCZOS).convert('RGBA')
+    logo_photo = ImageTk.PhotoImage(logo_image)
+    
+    logo_x = window_width * 0.7
+    logo_y = window_height // 2
+
+    logo_label = tk.Label(root, image=logo_photo, bg="#1a1a1a")
+    logo_label.image = logo_photo
+    logo_label.place(x=logo_x, y=logo_y, anchor="center")
+    
+    logo1_label = tk.Label(root, image=logo1_photo, bg="#1a1a1a")
+    logo1_label.image = logo1_photo
+    logo1_label.place(x=logo_x, y=logo_y, anchor="center")
+
+    for i in range(120):
+        new_x = logo_x + i
+        logo1_label.place_configure(x=new_x)
+        root.update_idletasks()
+        root.after(1)
+
+    logo1_label.lift()
+
+root.after(500, animate_image)
+
+# 图标悬停变色和点击事件
+def on_enter_icon(event, hover_photo):
+    event.widget.config(image=hover_photo)
+    event.widget.image = hover_photo
+
+def on_leave_icon(event, photo):
+    event.widget.config(image=photo)
+    event.widget.image = photo
+
+def open_link(url):
+    webbrowser.open(url)
+
+# 添加中间下部的图标和点击事件
+def create_icon(path, hover_path, x, y, url):
+    photo, hover_photo = load_image(path, 0.5)
+    icon_label = tk.Label(root, image=photo, bg="#1a1a1a", cursor="hand2")
+    icon_label.image = photo
+    icon_label.place(x=x, y=y, anchor="center")
+    icon_label.bind("<Button-1>", lambda e: open_link(url))
+    icon_label.bind("<Enter>", lambda e: on_enter_icon(e, hover_photo))
+    icon_label.bind("<Leave>", lambda e: on_leave_icon(e, photo))
+
+# 更新后的icon_info
+icon_info = [
+    ("assets/bilibili.png", "assets/bilibili.png", window_width // 2 - 40, window_height - 30, "https://space.bilibili.com/486637407"),
+    ("assets/github.png", "assets/github.png", window_width // 2 + 40, window_height - 30, "https://github.com/Vape1337/Vapev4.10-Save"),
+]
+
+for icon in icon_info:
+    create_icon(*icon)
 
 root.mainloop()
