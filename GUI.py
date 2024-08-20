@@ -2,81 +2,110 @@ import tkinter as tk
 from PIL import Image, ImageTk, ImageEnhance
 import os
 import subprocess
+import sys
 
-# 获取当前脚本的目录
-script_dir = os.path.dirname(os.path.abspath(__file__))
+# 判断当前运行的文件路径
+if getattr(sys, 'frozen', False):
+    script_dir = sys._MEIPASS
+else:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
 
-# 初始化窗口
 root = tk.Tk()
 window_width = 694
 window_height = 417
 
-# 获取屏幕的宽度和高度
 screen_width = root.winfo_screenwidth()
 screen_height = root.winfo_screenheight()
 
-# 计算窗口居中时左上角的坐标
 x = (screen_width - window_width) // 2
 y = (screen_height - window_height) // 2
 
-# 设置窗口大小并居中
 root.geometry(f"{window_width}x{window_height}+{x}+{y}")
 root.configure(bg="#1a1a1a")
-
-# 移除窗口边框
 root.overrideredirect(True)
 
-# 设置图片的函数
 def place_image(path, x, y, anchor):
-    image = Image.open(path)
+    image = Image.open(os.path.join(script_dir, path))
     photo = ImageTk.PhotoImage(image)
     label = tk.Label(root, image=photo, bg="#1a1a1a")
     label.image = photo
     label.place(x=x, y=y, anchor=anchor)
     return label
 
-# 将背景图片放置在窗口的最左上角
-background_label = place_image(os.path.join(script_dir, "newassets/mask_l_1.png"), 0, 0, anchor="nw")
+background_label = place_image("assets/mask_l_1.png", 0, 0, anchor="nw")
+place_image("assets/mask_r_1.png", window_width, window_height, anchor="se")
 
-# 将另一张图片放置在右下角
-place_image(os.path.join(script_dir, "newassets/mask_r_1.png"), window_width, window_height, anchor="se")
+# 缩小比例
+scale = 0.6
 
-# 设置关闭按钮，并偏移2cm
-off_image_path = os.path.join(script_dir, "newassets/off.png")
+def load_image(path, scale):
+    image = Image.open(os.path.join(script_dir, path))
+    width, height = image.size
+    resized_image = image.resize((int(width * scale), int(height * scale)), Image.LANCZOS)
+    photo = ImageTk.PhotoImage(resized_image)
+    enhancer = ImageEnhance.Brightness(resized_image)
+    hover_image = enhancer.enhance(1.5)  # 提高伽马值
+    hover_photo = ImageTk.PhotoImage(hover_image)
+    return photo, hover_photo
 
-# 加载常规图像
+def on_click(bat_path):
+    full_path = os.path.join(script_dir, bat_path)
+    print(f"Attempting to run: {full_path}")  # 打印尝试运行的路径
+    try:
+        subprocess.Popen(f'"{full_path}"', shell=True)
+        print(f"Successfully started: {full_path}")  # 打印成功启动信息
+    except Exception as e:
+        print(f"Failed to start {full_path}: {e}")  # 打印错误信息
+
+# 按钮路径与执行的程序映射
+buttons_info = [
+    ("assets/4.04.png", "VapeV4.04/run.bat"),
+    ("assets/4.09.png", "VapeV4.09/run.bat"),
+    ("assets/4.10.png", "VapeV4.10/run.bat"),
+    ("assets/4.11.png", "VapeV4.11/run.bat"),
+    ("assets/lite.png", "VapeLite/run.bat")
+]
+
+button_x_position = 20
+button_spacing = 60  # 调整间距
+
+# 最下方按钮的位置
+bottom_button_y_position = window_height - 100
+
+# 从下往上排列按钮
+for i, (img_path, bat_path) in enumerate(reversed(buttons_info)):
+    photo, hover_photo = load_image(img_path, scale)
+    button = tk.Button(root, image=photo, bg="#1a1a1a", bd=0, activebackground="#1a1a1a",
+                       command=lambda path=bat_path: on_click(path))
+    button.image = photo
+    button.bind("<Enter>", lambda event, hp=hover_photo: event.widget.config(image=hp))
+    button.bind("<Leave>", lambda event, p=photo: event.widget.config(image=p))
+    button.place(x=button_x_position, y=bottom_button_y_position - i * button_spacing, anchor="nw")
+
+# 关闭按钮设置
+close_button_path = "assets/off.png"
+off_image_path = os.path.join(script_dir, close_button_path)
 off_image = Image.open(off_image_path)
 off_photo = ImageTk.PhotoImage(off_image)
-
-# 创建亮度增强图像
 enhancer = ImageEnhance.Brightness(off_image)
-off_hover_image = enhancer.enhance(1.5)  # 增加亮度
+off_hover_image = enhancer.enhance(1.5)
 off_hover_photo = ImageTk.PhotoImage(off_hover_image)
 
-# 设置关闭按钮高亮效果
 def on_enter(event):
-    close_button.config(image=off_hover_photo)  # 更换为高亮图片
+    close_button.config(image=off_hover_photo)
 
 def on_leave(event):
-    close_button.config(image=off_photo)  # 恢复原始图片
+    close_button.config(image=off_photo)
 
-# 创建关闭按钮
 close_button = tk.Button(root, image=off_photo, bg="#1a1a1a", bd=0, activebackground="#1a1a1a", command=root.destroy)
 close_button.image = off_photo
 
-# 绑定鼠标进入和离开事件来实现高亮效果
-close_button.bind("<Enter>", on_enter)
-close_button.bind("<Leave>", on_leave)
-
-# 关闭按钮位置向左偏2cm（20px），向下偏2cm（20px）
-button_x_offset = 20  # 偏移量
-button_y_offset = 20  # 偏移量
+button_x_offset = 20
+button_y_offset = 20
 close_button.place(x=window_width - button_x_offset, y=button_y_offset, anchor="ne")
-
-# 将关闭按钮置于最顶层，以确保不会被其他元素遮挡
 close_button.lift()
 
-# 允许在窗口的任意区域拖动窗口
+# 窗口拖动功能
 def start_move(event):
     root._drag_data = {'x': event.x_root - root.winfo_rootx(), 'y': event.y_root - root.winfo_rooty()}
 
@@ -85,21 +114,7 @@ def do_move(event):
     y = event.y_root - root._drag_data['y']
     root.geometry(f'+{x}+{y}')
 
-# 绑定拖动事件到整个窗口
 root.bind('<ButtonPress-1>', start_move)
 root.bind('<B1-Motion>', do_move)
-
-# 定义按钮点击事件
-def run_vape(version):
-    exe_path = os.path.join(script_dir, f"Vape{version}/norename.exe")
-    subprocess.run(exe_path)
-
-# 添加左侧按钮
-button_names = ["点击注入VapeV4.04", "点击注入VapeV4.09", "点击注入VapeV4.10", "点击注入VapeV4.11", "点击注入VapeLite"]
-versions = ["V4.04", "V4.09", "V4.10", "V4.11", "Lite"]
-
-for i, (name, version) in enumerate(zip(button_names, versions)):
-    button = tk.Button(root, text=name, command=lambda v=version: run_vape(v), bg="#333333", fg="#FFFFFF", bd=0, activebackground="#444444", activeforeground="#FFFFFF")
-    button.place(x=20, y=40 + i*40, anchor="nw", width=160, height=30)
 
 root.mainloop()
