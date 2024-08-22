@@ -156,7 +156,6 @@ def animate_image():
 
 root.after(500, animate_image)
 
-
 # 图标悬停变色和点击事件
 def on_enter_icon(event, hover_photo):
     event.widget.config(image=hover_photo)
@@ -187,5 +186,27 @@ icon_info = [
 
 for icon in icon_info:
     create_icon(*icon)
+
+# 添加警告信息
+def show_warning():
+    messagebox.showwarning(
+        "警告",
+        "警告，你如果要使用VapeV4.09以上版本\n"
+        "你就要手动更新时间到2021\n"
+        "如果你会使用RunAsDate\n"
+        "请务必联系QQ：3390428298\n"
+        "或者\n"
+        "QQ邮箱：3390428298@qq.com\n"
+        "本程序免费开源，请勿倒卖\n"
+        ""
+        "你必须遵守CC BY-NC-SA 4.0协议！\n"
+        ""
+        "此程序正在更新，现在是预发布版\n"
+        "如果你想反馈问题，请去github的问题提问\n"
+        "此程序没有病毒后门\n"
+        "你可以享受了：）"
+    )
+
+root.after(1000, show_warning)
 
 root.mainloop()

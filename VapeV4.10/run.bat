@@ -5,14 +5,10 @@ setlocal enabledelayedexpansion
 rem 过滤 settings.txt 内容
 call :filter_content
 
-rem 运行 Java 命令
-start "" java --add-opens java.base/java.lang=ALL-UNNAMED -jar vape-loader.jar
+"load.exe" 
 
 rem 等待 3 s
 timeout /t 3
-
-rem 启动 load.exe
-if exist "load.exe" start "" load.exe
 
 exit /b
 
